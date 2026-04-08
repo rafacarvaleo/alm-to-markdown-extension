@@ -1,0 +1,16 @@
+{
+  "name": "alm-item-html-export",
+  "version": "1.0.0",
+  "description": "Chrome MV3: exporta artefato de texto DOORS Next (ALM) como Markdown GFM.",
+  "main": "src/extractArtifactHtml.js",
+  "scripts": {
+    "vendor": "node scripts/copy-vendor.cjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2"
+  }
+}

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 12px;
+      min-width: 260px;
+      max-width: 320px;
+    }
+    button {
+      width: 100%;
+      padding: 8px 12px;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    button.secondary {
+      margin-top: 8px;
+    }
+    #status {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #333;
+    }
+    #status.error {
+      color: #a40000;
+    }
+    fieldset {
+      margin: 12px 0 0;
+      padding: 8px 10px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    legend {
+      font-size: 13px;
+      padding: 0 4px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      font-size: 13px;
+    }
+    .row input[type="checkbox"] {
+      flex-shrink: 0;
+    }
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border: 1px solid #888;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .hint {
+      font-size: 11px;
+      color: #555;
+      margin-top: 8px;
+      line-height: 1.35;
+    }
+    #highlights-empty {
+      font-size: 12px;
+      color: #666;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <button type="button" id="export">Baixar Markdown do item</button>
+
+  <fieldset>
+    <legend>Destaques no HTML</legend>
+    <button type="button" id="scan" class="secondary">Atualizar análise</button>
+    <div id="highlights-panel" hidden>
+      <div id="cb-strike-row" class="row" hidden>
+        <input type="checkbox" id="cb-strike" />
+        <label for="cb-strike">Tachado</label>
+      </div>
+      <div id="color-checkboxes"></div>
+      <div class="row">
+        <input type="checkbox" id="cb-union" />
+        <label for="cb-union">Um único ficheiro com tudo o que estiver marcado</label>
+      </div>
+      <div class="row">
+        <input type="checkbox" id="cb-full" checked />
+        <label for="cb-full">Incluir Markdown completo (com índice no rodapé)</label>
+      </div>
+      <button type="button" id="export-bundle" class="secondary">
+        Exportar selecionados
+      </button>
+    </div>
+    <p id="highlights-empty">A abrir, analisamos tachado e cores de realce…</p>
+  </fieldset>
+
+  <p id="status" aria-live="polite"></p>
+  <p class="hint">
+    Guarde o ficheiro completo e os auxiliares na mesma pasta para os caminhos
+    relativos do índice fazerem sentido.
+  </p>
+  <script src="popup.js"></script>
+</body>
+</html>
