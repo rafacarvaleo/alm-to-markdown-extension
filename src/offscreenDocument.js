@@ -86,26 +86,30 @@ export async function analyzeHighlightsViaOffscreen(htmlFragment) {
  * @param {string} htmlFragment
  * @param {string} [documentTitle]
  * @param {string} [yamlFrontMatter]
+ * @param {boolean} [removeStrikethrough]
  * @returns {Promise<{ ok: true, markdown: string } | { ok: false, error: string }>}
  */
 export async function convertHtmlToMarkdownViaOffscreen(
   htmlFragment,
   documentTitle,
   yamlFrontMatter,
+  removeStrikethrough,
 ) {
   return sendOffscreenMessage({
     type: "CONVERT_TO_MARKDOWN",
     htmlFragment,
     documentTitle,
     yamlFrontMatter,
+    removeStrikethrough: Boolean(removeStrikethrough),
   });
 }
 
 /**
  * @param {string} htmlFragment
  * @param {string} [documentTitle]
- * @param {object} sliceOptions Opções de `buildSliceHtml` (união, tachado, cores).
+ * @param {object} sliceOptions Opções de `buildSliceHtml` (união, cores).
  * @param {string} [yamlFrontMatter]
+ * @param {boolean} [removeStrikethrough]
  * @returns {Promise<{ ok: true, markdown: string } | { ok: false, error: string }>}
  */
 export async function buildSliceAndConvertViaOffscreen(
@@ -113,6 +117,7 @@ export async function buildSliceAndConvertViaOffscreen(
   documentTitle,
   sliceOptions,
   yamlFrontMatter,
+  removeStrikethrough,
 ) {
   return sendOffscreenMessage({
     type: "BUILD_SLICE_AND_CONVERT",
@@ -120,5 +125,6 @@ export async function buildSliceAndConvertViaOffscreen(
     documentTitle,
     sliceOptions,
     yamlFrontMatter,
+    removeStrikethrough: Boolean(removeStrikethrough),
   });
 }

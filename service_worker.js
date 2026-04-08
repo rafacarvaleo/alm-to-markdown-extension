@@ -5,7 +5,6 @@ import {
   buildSliceAndConvertViaOffscreen,
 } from "./src/offscreenDocument.js";
 import {
-  sliceYamlFrontMatterTachado,
   sliceYamlFrontMatterColor,
   sliceYamlFrontMatterUnion,
 } from "./src/highlightSlices.js";
@@ -35,14 +34,6 @@ function markdownBaseName(suggestedBasename) {
     .slice(0, 200);
   const noExt = raw.replace(/\.md$/i, "").trim();
   return noExt || "alm-item";
-}
-
-/**
- * @param {string} base
- * @returns {string}
- */
-function sliceFilenameTachado(base) {
-  return `${base}__tachado.md`;
 }
 
 /**
@@ -179,6 +170,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         const conv = await convertHtmlToMarkdownViaOffscreen(
           result.htmlFragment,
           result.documentTitle,
+          undefined,
+          Boolean(message.removeStrikethrough),
         );
 
         if (!conv.ok) {
@@ -221,17 +214,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
 
         const exportFull = message.exportFull !== false;
-        const strikethrough = Boolean(message.strikethrough);
+        const removeStrikethrough = Boolean(message.removeStrikethrough);
         const colors = Array.isArray(message.colors) ? message.colors : [];
         const union = Boolean(message.union);
 
-        const hasAnySlice = strikethrough || colors.length > 0;
+        const hasAnySlice = colors.length > 0;
 
         if (!exportFull && !hasAnySlice) {
           sendResponse({
             ok: false,
             error:
-              "Marque tachado ou pelo menos uma cor, ou inclua o documento completo.",
+              "Marque pelo menos uma cor de realce ou inclua o documento completo.",
           });
           return;
         }
@@ -260,7 +253,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           if (union) {
             const sliceOpts = {
               union: true,
-              includeStrikethrough: strikethrough,
               colorHexes: colors,
             };
             const sliceTitle = titleBase
@@ -271,6 +263,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
               sliceTitle,
               sliceOpts,
               sliceYamlFrontMatterUnion(),
+              removeStrikethrough,
             );
             if (!conv.ok) {
               sendResponse({
@@ -288,32 +281,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
               });
             }
           } else {
-            if (strikethrough) {
-              const sliceTitle = titleBase
-                ? `${titleBase} — tachado`
-                : "Tachado";
-              const conv = await buildSliceAndConvertViaOffscreen(
-                result.htmlFragment,
-                sliceTitle,
-                { union: false, strikeOnly: true },
-                sliceYamlFrontMatterTachado(),
-              );
-              if (!conv.ok) {
-                sendResponse({
-                  ok: false,
-                  error: conv.error || "Falha ao gerar trechos tachados.",
-                });
-                return;
-              }
-              if (markdownSliceHasBody(conv.markdown)) {
-                const fn = sliceFilenameTachado(base);
-                await downloadMarkdown(fn, conv.markdown, false);
-                indexEntries.push({
-                  label: "Tachados",
-                  filename: fn,
-                });
-              }
-            }
             for (const hex of colors) {
               const sliceTitle = titleBase
                 ? `${titleBase} — realce ${hex}`
@@ -323,6 +290,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 sliceTitle,
                 { union: false, colorHex: hex },
                 sliceYamlFrontMatterColor(hex),
+                removeStrikethrough,
               );
               if (!conv.ok) {
                 sendResponse({
@@ -347,6 +315,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           const fullConv = await convertHtmlToMarkdownViaOffscreen(
             result.htmlFragment,
             result.documentTitle,
+            undefined,
+            removeStrikethrough,
           );
           if (!fullConv.ok) {
             sendResponse({

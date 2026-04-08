@@ -36,6 +36,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       let markdown = artifactHtmlToMarkdown(
         msg.htmlFragment,
         msg.documentTitle,
+        { removeStrikethrough: Boolean(msg.removeStrikethrough) },
       );
       if (msg.yamlFrontMatter) {
         markdown = msg.yamlFrontMatter + markdown;
@@ -58,7 +59,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         return true;
       }
       const sliceHtml = buildSliceHtml(root, msg.sliceOptions);
-      let markdown = artifactHtmlToMarkdown(sliceHtml, msg.documentTitle);
+      let markdown = artifactHtmlToMarkdown(sliceHtml, msg.documentTitle, {
+        removeStrikethrough: Boolean(msg.removeStrikethrough),
+      });
       if (msg.yamlFrontMatter) {
         markdown = msg.yamlFrontMatter + markdown;
       }

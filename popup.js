@@ -4,8 +4,7 @@ const btnBundle = document.getElementById("export-bundle");
 const statusEl = document.getElementById("status");
 const highlightsPanel = document.getElementById("highlights-panel");
 const highlightsEmpty = document.getElementById("highlights-empty");
-const cbStrikeRow = document.getElementById("cb-strike-row");
-const cbStrike = document.getElementById("cb-strike");
+const cbRemoveStrike = document.getElementById("cb-remove-strike");
 const colorCheckboxesEl = document.getElementById("color-checkboxes");
 const cbUnion = document.getElementById("cb-union");
 const cbFull = document.getElementById("cb-full");
@@ -31,12 +30,9 @@ function renderHighlights(colors, hasStrikethrough) {
   lastColors = colors || [];
   colorCheckboxesEl.textContent = "";
 
-  const hasAnything = hasStrikethrough || lastColors.length > 0;
-  highlightsEmpty.hidden = hasAnything;
+  const hasColors = lastColors.length > 0;
+  highlightsEmpty.hidden = hasColors;
   highlightsPanel.hidden = false;
-
-  cbStrikeRow.hidden = !hasStrikethrough;
-  cbStrike.checked = false;
 
   for (const hex of lastColors) {
     const id = `cb-color-${hex.replace(/#/g, "")}`;
@@ -59,9 +55,10 @@ function renderHighlights(colors, hasStrikethrough) {
     colorCheckboxesEl.appendChild(row);
   }
 
-  if (!hasAnything) {
-    highlightsEmpty.textContent =
-      "Não foram encontrados tachados nem realces de cor (fora de cabeçalhos/UI).";
+  if (!hasColors) {
+    highlightsEmpty.textContent = hasStrikethrough
+      ? "Não foram encontradas cores de realce (fora de cabeçalhos/UI). Pode ainda marcar \"Remover conteúdo tachado\" nos exports."
+      : "Não foram encontradas cores de realce (fora de cabeçalhos/UI).";
     highlightsEmpty.hidden = false;
   }
 }
@@ -113,6 +110,7 @@ btn.addEventListener("click", async () => {
     const response = await chrome.runtime.sendMessage({
       type: "EXPORT_ITEM_MARKDOWN",
       tabId: tab.id,
+      removeStrikethrough: cbRemoveStrike.checked,
     });
 
     if (response?.ok) {
@@ -144,7 +142,6 @@ btnBundle.addEventListener("click", async () => {
       return;
     }
 
-    const strikeOn = cbStrike.checked && !cbStrikeRow.hidden;
     /** @type {string[]} */
     const selectedColors = [];
     colorCheckboxesEl.querySelectorAll('input[type="checkbox"]').forEach((el) => {
@@ -160,7 +157,7 @@ btnBundle.addEventListener("click", async () => {
       type: "EXPORT_MARKDOWN_BUNDLE",
       tabId: tab.id,
       exportFull,
-      strikethrough: strikeOn,
+      removeStrikethrough: cbRemoveStrike.checked,
       colors: selectedColors,
       union,
     });

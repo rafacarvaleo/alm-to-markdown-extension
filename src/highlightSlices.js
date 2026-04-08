@@ -1,6 +1,6 @@
 /**
  * Deteção de realces (background-color) e tachado no HTML do artefato ALM,
- * e construção de fragmentos HTML só com os blocos de contexto relevantes.
+ * remoção de tachado no DOM e construção de fragmentos só com nós realçados.
  */
 
 /**
@@ -86,49 +86,39 @@ export function elementHasStrikethrough(el) {
 }
 
 /**
- * Sobe até um bloco com contexto legível (parágrafo, célula, item de lista, div de cenário).
+ * Profundidade do elemento relativamente a `root` (root = 0).
  * @param {Element} el
- * @param {Element} boundary
+ * @param {Element} root
  */
-export function getContextBlock(el, boundary) {
-  const stop = boundary || el.ownerDocument?.documentElement;
+function depthWithin(el, root) {
+  let d = 0;
   let n = el;
-  while (n && n !== stop) {
-    if (n.nodeType !== 1) {
-      n = n.parentElement;
-      continue;
-    }
-    const name = n.nodeName.toUpperCase();
-    if (name === "P" || name === "LI" || name === "TD" || name === "TH") {
-      return n;
-    }
-    if (
-      name === "DIV" &&
-      (n.classList.contains("replacedEmbedParagraph") ||
-        n.classList.contains("dijitContentPane"))
-    ) {
-      return n;
-    }
+  while (n && n !== root) {
+    d += 1;
     n = n.parentElement;
   }
-  return el.closest("p, li, td, th") || el;
+  return d;
 }
 
 /**
- * Remove blocos contidos noutro.
- * @param {Element[]} blocks
+ * Remove do DOM os nós tachados (tags e estilos), do mais profundo para a raiz.
+ * @param {HTMLElement} root
  */
-export function dedupeContextBlocks(blocks) {
-  const uniq = [...new Set(blocks)];
-  uniq.sort((a, b) => {
-    const pos = a.compareDocumentPosition(b);
-    if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-    if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-    return 0;
+export function removeStrikethroughFromRoot(root) {
+  /** @type {Element[]} */
+  const hits = [];
+  root.querySelectorAll("*").forEach((el) => {
+    if (root.contains(el) && elementHasStrikethrough(el)) {
+      hits.push(el);
+    }
   });
-  return uniq.filter(
-    (b) => !uniq.some((o) => o !== b && o.contains(b)),
-  );
+  const uniq = [...new Set(hits)];
+  uniq.sort((a, b) => depthWithin(b, root) - depthWithin(a, root));
+  for (const el of uniq) {
+    if (el.parentNode && root.contains(el)) {
+      el.parentNode.removeChild(el);
+    }
+  }
 }
 
 /**
@@ -156,43 +146,54 @@ export function collectHighlightKeys(root) {
   };
 }
 
-function collectStrikeBlocks(root) {
-  /** @type {Element[]} */
-  const out = [];
-  root.querySelectorAll("*").forEach((el) => {
-    if (elementHasStrikethrough(el)) {
-      out.push(getContextBlock(el, root));
-    }
-  });
-  return dedupeContextBlocks(out);
-}
-
-function collectColorBlocks(root, colorHex) {
+/**
+ * Elementos que têm `background-color` igual a `colorHex` (sem subir ao parágrafo/célula).
+ * Mantém só nós sem antepassado também com a mesma cor (evita duplicar texto).
+ * @param {HTMLElement} root
+ * @param {string} colorHex
+ * @returns {Element[]}
+ */
+export function collectColorHighlightNodes(root, colorHex) {
   const target = colorHex.toUpperCase();
   /** @type {Element[]} */
-  const out = [];
+  const matches = [];
   root.querySelectorAll("[style]").forEach((el) => {
+    if (!root.contains(el)) return;
     const hex = parseBackgroundColorFromStyle(el.getAttribute("style") || "");
-    if (hex && hex.toUpperCase() === target) {
-      out.push(getContextBlock(el, root));
+    if (!hex || hex.toUpperCase() !== target || isStructuralBackgroundColor(hex)) {
+      return;
     }
+    matches.push(el);
   });
-  return dedupeContextBlocks(out);
+  return matches.filter(
+    (n) => !matches.some((o) => o !== n && o.contains(n)),
+  );
+}
+
+/**
+ * @param {Element[]} elements
+ * @returns {Element[]}
+ */
+function sortElementsDocumentOrder(elements) {
+  return [...elements].sort((a, b) => {
+    const pos = a.compareDocumentPosition(b);
+    if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+    if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+    return 0;
+  });
 }
 
 /**
  * @typedef {object} SliceBuildOptions
- * @property {boolean} [union] — OR de tachado + cores em `colorHexes` quando `includeStrikethrough`.
- * @property {boolean} [includeStrikethrough] — usado com `union: true`.
+ * @property {boolean} [union] — OR das cores em `colorHexes`.
  * @property {string[]} [colorHexes] — hex `#RRGGBB`; usado com `union: true`.
- * @property {boolean} [strikeOnly] — ficheiro só tachado (`union: false`).
  * @property {string} [colorHex] — uma cor (`union: false`).
  */
 
 /**
- * Devolve `outerHTML` de um div com clones dos blocos.
+ * Devolve `outerHTML` de um div com clones dos nós com realce (só esses nós).
  * @param {HTMLElement} root - contentor do fragmento (ex. #alm-export-root)
- * @param {SliceBuildOptions & { strikeOnly?: boolean, colorHex?: string }} opts
+ * @param {SliceBuildOptions} opts
  * @returns {string}
  */
 export function buildSliceHtml(root, opts) {
@@ -204,17 +205,12 @@ export function buildSliceHtml(root, opts) {
   let blocks = [];
 
   if (opts.union) {
-    if (opts.includeStrikethrough) {
-      blocks.push(...collectStrikeBlocks(root));
-    }
     for (const h of opts.colorHexes || []) {
-      blocks.push(...collectColorBlocks(root, h));
+      blocks.push(...collectColorHighlightNodes(root, h));
     }
-    blocks = dedupeContextBlocks(blocks);
-  } else if (opts.strikeOnly) {
-    blocks = collectStrikeBlocks(root);
+    blocks = sortElementsDocumentOrder(blocks);
   } else if (opts.colorHex) {
-    blocks = collectColorBlocks(root, opts.colorHex);
+    blocks = collectColorHighlightNodes(root, opts.colorHex);
   }
 
   for (const b of blocks) {
@@ -237,10 +233,6 @@ export function parseExportRoot(htmlFragment) {
     "text/html",
   );
   return doc.getElementById("alm-export-root");
-}
-
-export function sliceYamlFrontMatterTachado() {
-  return "---\nalm-slice: tachado\n---\n\n";
 }
 
 /**

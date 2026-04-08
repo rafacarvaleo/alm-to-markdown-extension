@@ -67,16 +67,16 @@
   </style>
 </head>
 <body>
+  <div class="row" style="margin-top: 0">
+    <input type="checkbox" id="cb-remove-strike" />
+    <label for="cb-remove-strike">Remover conteúdo tachado</label>
+  </div>
   <button type="button" id="export">Baixar Markdown do item</button>
 
   <fieldset>
     <legend>Destaques no HTML</legend>
     <button type="button" id="scan" class="secondary">Atualizar análise</button>
     <div id="highlights-panel" hidden>
-      <div id="cb-strike-row" class="row" hidden>
-        <input type="checkbox" id="cb-strike" />
-        <label for="cb-strike">Tachado</label>
-      </div>
       <div id="color-checkboxes"></div>
       <div class="row">
         <input type="checkbox" id="cb-union" />
@@ -90,7 +90,7 @@
         Exportar selecionados
       </button>
     </div>
-    <p id="highlights-empty">A abrir, analisamos tachado e cores de realce…</p>
+    <p id="highlights-empty">A abrir, analisamos cores de realce…</p>
   </fieldset>
 
   <p id="status" aria-live="polite"></p>
