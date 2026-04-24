@@ -1,13 +1,12 @@
 const btn = document.getElementById("export");
 const btnScan = document.getElementById("scan");
-const btnBundle = document.getElementById("export-bundle");
 const statusEl = document.getElementById("status");
 const highlightsPanel = document.getElementById("highlights-panel");
 const highlightsEmpty = document.getElementById("highlights-empty");
 const cbRemoveStrike = document.getElementById("cb-remove-strike");
+const cbIncludeHlTags = document.getElementById("cb-include-hl-tags");
+const hlTagsHint = document.getElementById("hl-tags-hint");
 const colorCheckboxesEl = document.getElementById("color-checkboxes");
-const cbUnion = document.getElementById("cb-union");
-const cbFull = document.getElementById("cb-full");
 
 /** @type {string[]} */
 let lastColors = [];
@@ -21,6 +20,13 @@ function hexToCss(hex) {
   const h = hex.startsWith("#") ? hex : `#${hex}`;
   return h;
 }
+
+function updateHlTagsHint() {
+  const on = cbIncludeHlTags.checked;
+  hlTagsHint.hidden = !on;
+}
+
+cbIncludeHlTags.addEventListener("change", updateHlTagsHint);
 
 /**
  * @param {string[]} colors
@@ -57,7 +63,7 @@ function renderHighlights(colors, hasStrikethrough) {
 
   if (!hasColors) {
     highlightsEmpty.textContent = hasStrikethrough
-      ? "Não foram encontradas cores de realce (fora de cabeçalhos/UI). Pode ainda marcar \"Remover conteúdo tachado\" nos exports."
+      ? "Não foram encontradas cores de realce (fora de cabeçalhos/UI). Pode ainda marcar \"Remover conteúdo tachado\" no export."
       : "Não foram encontradas cores de realce (fora de cabeçalhos/UI).";
     highlightsEmpty.hidden = false;
   }
@@ -107,11 +113,33 @@ btn.addEventListener("click", async () => {
       return;
     }
 
-    const response = await chrome.runtime.sendMessage({
+    const wantTags = cbIncludeHlTags.checked;
+    /** @type {string[]} */
+    const selectedColors = [];
+    colorCheckboxesEl.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+      if (el.checked && el.value) {
+        selectedColors.push(el.value);
+      }
+    });
+
+    if (wantTags && selectedColors.length === 0) {
+      setStatus(
+        "Selecione pelo menos uma cor de realce para etiquetar ou desative a opção de tags.",
+        true,
+      );
+      return;
+    }
+
+    const payload = {
       type: "EXPORT_ITEM_MARKDOWN",
       tabId: tab.id,
       removeStrikethrough: cbRemoveStrike.checked,
-    });
+    };
+    if (wantTags && selectedColors.length > 0) {
+      payload.tagHighlightHexes = selectedColors;
+    }
+
+    const response = await chrome.runtime.sendMessage(payload);
 
     if (response?.ok) {
       setStatus("Download iniciado.");
@@ -129,55 +157,12 @@ btnScan.addEventListener("click", () => {
   scanHighlights();
 });
 
-btnBundle.addEventListener("click", async () => {
-  setStatus("");
-  btnBundle.disabled = true;
-  try {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      lastFocusedWindow: true,
-    });
-    if (!tab?.id) {
-      setStatus("Não foi possível obter a aba ativa.", true);
-      return;
-    }
-
-    /** @type {string[]} */
-    const selectedColors = [];
-    colorCheckboxesEl.querySelectorAll('input[type="checkbox"]').forEach((el) => {
-      if (el.checked && el.value) {
-        selectedColors.push(el.value);
-      }
-    });
-
-    const union = cbUnion.checked;
-    const exportFull = cbFull.checked;
-
-    const response = await chrome.runtime.sendMessage({
-      type: "EXPORT_MARKDOWN_BUNDLE",
-      tabId: tab.id,
-      exportFull,
-      removeStrikethrough: cbRemoveStrike.checked,
-      colors: selectedColors,
-      union,
-    });
-
-    if (response?.ok) {
-      setStatus("Downloads iniciados.");
-    } else {
-      setStatus(response?.error || "Erro desconhecido.", true);
-    }
-  } catch (e) {
-    setStatus(e?.message || String(e), true);
-  } finally {
-    btnBundle.disabled = false;
-  }
-});
-
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
+    updateHlTagsHint();
     scanHighlights();
   });
 } else {
+  updateHlTagsHint();
   scanHighlights();
 }

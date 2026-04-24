@@ -1,6 +1,6 @@
 /**
  * Deteção de realces (background-color) e tachado no HTML do artefato ALM,
- * remoção de tachado no DOM e construção de fragmentos só com nós realçados.
+ * remoção de tachado e embrulho para export com tags de cor (Markdown).
  */
 
 /**
@@ -174,52 +174,79 @@ export function collectColorHighlightNodes(root, colorHex) {
  * @param {Element[]} elements
  * @returns {Element[]}
  */
-function sortElementsDocumentOrder(elements) {
-  return [...elements].sort((a, b) => {
-    const pos = a.compareDocumentPosition(b);
-    if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-    if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-    return 0;
-  });
+/**
+ * @param {Element} el
+ */
+function isPhrasingForWrap(el) {
+  const t = el.nodeName;
+  return (
+    t === "SPAN" ||
+    t === "A" ||
+    t === "STRONG" ||
+    t === "B" ||
+    t === "EM" ||
+    t === "I" ||
+    t === "CODE" ||
+    t === "S" ||
+    t === "DEL" ||
+    t === "MARK" ||
+    t === "SUB" ||
+    t === "SUP" ||
+    t === "U"
+  );
 }
 
 /**
- * @typedef {object} SliceBuildOptions
- * @property {boolean} [union] — OR das cores em `colorHexes`.
- * @property {string[]} [colorHexes] — hex `#RRGGBB`; usado com `union: true`.
- * @property {string} [colorHex] — uma cor (`union: false`).
+ * Embrulha nós com realce (para uma ou mais cores) com `span` ou `div` que o Turndown
+ * mapeia para comentários `<!-- alm-hl: … -->` / `<!-- /alm-hl -->`.
+ * Aplica do mais profundo para o raso, para não partir árvore com aninhamentos.
+ * @param {HTMLElement} root
+ * @param {string[]} colorHexes — `#RRGGBB` (só as cores que o utilizador escolheu)
  */
-
-/**
- * Devolve `outerHTML` de um div com clones dos nós com realce (só esses nós).
- * @param {HTMLElement} root - contentor do fragmento (ex. #alm-export-root)
- * @param {SliceBuildOptions} opts
- * @returns {string}
- */
-export function buildSliceHtml(root, opts) {
-  const doc = root.ownerDocument;
-  const wrap = doc.createElement("div");
-  wrap.className = "alm-slice-root";
+export function wrapHighlightElementsForTagExport(root, colorHexes) {
+  if (!colorHexes || colorHexes.length === 0) return;
 
   /** @type {Element[]} */
-  let blocks = [];
-
-  if (opts.union) {
-    for (const h of opts.colorHexes || []) {
-      blocks.push(...collectColorHighlightNodes(root, h));
-    }
-    blocks = sortElementsDocumentOrder(blocks);
-  } else if (opts.colorHex) {
-    blocks = collectColorHighlightNodes(root, opts.colorHex);
+  const all = [];
+  for (const h of colorHexes) {
+    if (!h || !String(h).trim()) continue;
+    all.push(...collectColorHighlightNodes(root, h));
   }
+  const unique = [...new Set(all)];
+  unique.sort(
+    (a, b) => depthWithin(b, root) - depthWithin(a, root),
+  );
 
-  for (const b of blocks) {
-    if (root.contains(b)) {
-      wrap.appendChild(b.cloneNode(true));
+  for (const el of unique) {
+    if (!el.parentNode || !root.contains(el)) continue;
+    const style = el.getAttribute("style");
+    const hex = parseBackgroundColorFromStyle(style || "");
+    if (!hex) continue;
+
+    const doc = root.ownerDocument;
+    const t = el.nodeName;
+    if (t === "TD" || t === "TH") {
+      const w = doc.createElement("div");
+      w.setAttribute("class", "alm-hl-wrapped");
+      w.setAttribute("data-alm-hex", hex.toUpperCase());
+      while (el.firstChild) {
+        w.appendChild(el.firstChild);
+      }
+      el.appendChild(w);
+      continue;
     }
-  }
+    if (t === "TR" || t === "TABLE" || t === "THEAD" || t === "TBODY" || t === "TFOOT") {
+      continue;
+    }
 
-  return wrap.outerHTML;
+    const w = isPhrasingForWrap(el)
+      ? doc.createElement("span")
+      : doc.createElement("div");
+    w.setAttribute("class", "alm-hl-wrapped");
+    w.setAttribute("data-alm-hex", hex.toUpperCase());
+    el.parentNode.insertBefore(w, el);
+    w.appendChild(el);
+  }
 }
 
 /**
@@ -233,16 +260,4 @@ export function parseExportRoot(htmlFragment) {
     "text/html",
   );
   return doc.getElementById("alm-export-root");
-}
-
-/**
- * @param {string} hex `#RRGGBB`
- */
-export function sliceYamlFrontMatterColor(hex) {
-  const h = (hex || "").toUpperCase();
-  return `---\nalm-slice: realce\nalm-color: "${h}"\n---\n\n`;
-}
-
-export function sliceYamlFrontMatterUnion() {
-  return "---\nalm-slice: destaques-selecionados\n---\n\n";
 }

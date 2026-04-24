@@ -93,6 +93,8 @@ rules.tableSection = {
 //   following a blank THEAD)
 // - and every cell is a TH
 function isHeadingRow (tr) {
+  // Guard: empty tables yield rows[0] === undefined (DOORS/ALM exports).
+  if (!tr || !tr.parentNode) return false
   var parentNode = tr.parentNode;
   return (
     parentNode.nodeName === 'THEAD' ||

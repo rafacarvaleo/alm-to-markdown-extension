@@ -87,6 +87,7 @@ export async function analyzeHighlightsViaOffscreen(htmlFragment) {
  * @param {string} [documentTitle]
  * @param {string} [yamlFrontMatter]
  * @param {boolean} [removeStrikethrough]
+ * @param {string[]} [tagHighlightHexes] — cores `#RRGGBB` a marcar com `<!-- alm-hl: … -->` no Markdown
  * @returns {Promise<{ ok: true, markdown: string } | { ok: false, error: string }>}
  */
 export async function convertHtmlToMarkdownViaOffscreen(
@@ -94,6 +95,7 @@ export async function convertHtmlToMarkdownViaOffscreen(
   documentTitle,
   yamlFrontMatter,
   removeStrikethrough,
+  tagHighlightHexes,
 ) {
   return sendOffscreenMessage({
     type: "CONVERT_TO_MARKDOWN",
@@ -101,30 +103,9 @@ export async function convertHtmlToMarkdownViaOffscreen(
     documentTitle,
     yamlFrontMatter,
     removeStrikethrough: Boolean(removeStrikethrough),
-  });
-}
-
-/**
- * @param {string} htmlFragment
- * @param {string} [documentTitle]
- * @param {object} sliceOptions Opções de `buildSliceHtml` (união, cores).
- * @param {string} [yamlFrontMatter]
- * @param {boolean} [removeStrikethrough]
- * @returns {Promise<{ ok: true, markdown: string } | { ok: false, error: string }>}
- */
-export async function buildSliceAndConvertViaOffscreen(
-  htmlFragment,
-  documentTitle,
-  sliceOptions,
-  yamlFrontMatter,
-  removeStrikethrough,
-) {
-  return sendOffscreenMessage({
-    type: "BUILD_SLICE_AND_CONVERT",
-    htmlFragment,
-    documentTitle,
-    sliceOptions,
-    yamlFrontMatter,
-    removeStrikethrough: Boolean(removeStrikethrough),
+    tagHighlightHexes:
+      Array.isArray(tagHighlightHexes) && tagHighlightHexes.length > 0
+        ? tagHighlightHexes
+        : undefined,
   });
 }

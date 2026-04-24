@@ -5,14 +5,17 @@
 import TurndownService from "../vendor/turndown.browser.es.js";
 import { gfm } from "../vendor/turndown-plugin-gfm.browser.es.js";
 import { normalizeTableCellParagraphs } from "./normalizeTableCells.js";
-import { removeStrikethroughFromRoot } from "./highlightSlices.js";
+import {
+  removeStrikethroughFromRoot,
+  wrapHighlightElementsForTagExport,
+} from "./highlightSlices.js";
 
 /**
  * Converte o HTML limpo do artefato em Markdown.
  *
  * @param {string} htmlFragment - `outerHTML` do nó raiz extraído.
  * @param {string} [documentTitle] - Se definido, prefixa com um título nível 1.
- * @param {{ removeStrikethrough?: boolean }} [options]
+ * @param {{ removeStrikethrough?: boolean, tagHighlightHexes?: string[] }} [options]
  * @returns {string} Markdown final (termina com newline).
  */
 export function artifactHtmlToMarkdown(htmlFragment, documentTitle, options = {}) {
@@ -30,6 +33,10 @@ export function artifactHtmlToMarkdown(htmlFragment, documentTitle, options = {}
     removeStrikethroughFromRoot(root);
   }
 
+  if (options.tagHighlightHexes && options.tagHighlightHexes.length > 0) {
+    wrapHighlightElementsForTagExport(root, options.tagHighlightHexes);
+  }
+
   normalizeTableCellParagraphs(root);
 
   const turndownService = new TurndownService({
@@ -38,6 +45,38 @@ export function artifactHtmlToMarkdown(htmlFragment, documentTitle, options = {}
     codeBlockStyle: "fenced",
   });
   turndownService.use(gfm);
+
+  turndownService.addRule("almHighlightWrap", {
+    filter(node) {
+      if (node.nodeType !== 1) return false;
+      const cls = node.getAttribute("class") || "";
+      if (!/\balm-hl-wrapped\b/.test(cls)) return false;
+      return (
+        (node.nodeName === "DIV" || node.nodeName === "SPAN") &&
+        Boolean(node.getAttribute("data-alm-hex"))
+      );
+    },
+    replacement(content, node) {
+      const hex = node.getAttribute("data-alm-hex") || "";
+      const c = (content || "").trim();
+      if (node.nodeName === "SPAN") {
+        return (
+          "<!-- alm-hl: " +
+          hex +
+          " -->" +
+          (c ? " " + c + " " : " ") +
+          "<!-- /alm-hl -->"
+        );
+      }
+      return (
+        "\n\n<!-- alm-hl: " +
+        hex +
+        " -->\n\n" +
+        (c ? c + "\n\n" : "") +
+        "<!-- /alm-hl -->\n\n"
+      );
+    },
+  });
 
   let markdown = turndownService.turndown(root);
 

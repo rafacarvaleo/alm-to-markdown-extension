@@ -18,6 +18,9 @@
     button.secondary {
       margin-top: 8px;
     }
+    #export {
+      margin-top: 12px;
+    }
     #status {
       margin-top: 10px;
       font-size: 12px;
@@ -56,7 +59,7 @@
     .hint {
       font-size: 11px;
       color: #555;
-      margin-top: 8px;
+      margin: 6px 0 0;
       line-height: 1.35;
     }
     #highlights-empty {
@@ -71,33 +74,29 @@
     <input type="checkbox" id="cb-remove-strike" />
     <label for="cb-remove-strike">Remover conteúdo tachado</label>
   </div>
-  <button type="button" id="export">Baixar Markdown do item</button>
 
   <fieldset>
-    <legend>Destaques no HTML</legend>
+    <legend>Realces (cores de fundo)</legend>
     <button type="button" id="scan" class="secondary">Atualizar análise</button>
     <div id="highlights-panel" hidden>
+      <div class="row" style="margin-top: 8px">
+        <input type="checkbox" id="cb-include-hl-tags" />
+        <label for="cb-include-hl-tags"
+          >Incluir tags de cor no Markdown (comentários <code>alm-hl</code> no
+          texto)</label
+        >
+      </div>
+      <p class="hint" id="hl-tags-hint" hidden>
+        Com esta opção ativa, marque abaixo quais cores quer etiquetar.
+      </p>
       <div id="color-checkboxes"></div>
-      <div class="row">
-        <input type="checkbox" id="cb-union" />
-        <label for="cb-union">Um único ficheiro com tudo o que estiver marcado</label>
-      </div>
-      <div class="row">
-        <input type="checkbox" id="cb-full" checked />
-        <label for="cb-full">Incluir Markdown completo (com índice no rodapé)</label>
-      </div>
-      <button type="button" id="export-bundle" class="secondary">
-        Exportar selecionados
-      </button>
     </div>
     <p id="highlights-empty">A abrir, analisamos cores de realce…</p>
   </fieldset>
 
+  <button type="button" id="export">Baixar Markdown do item</button>
+
   <p id="status" aria-live="polite"></p>
-  <p class="hint">
-    Guarde o ficheiro completo e os auxiliares na mesma pasta para os caminhos
-    relativos do índice fazerem sentido.
-  </p>
   <script src="popup.js"></script>
 </body>
 </html>

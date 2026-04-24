@@ -1,6 +1,6 @@
 # ALM Item Markdown Export
 
-Extensão **Chrome** (Manifest V3) que exporta o conteúdo de artefatos de texto no **DOORS Next** (ALM) para **Markdown** (GFM), com [Turndown](https://github.com/mixmark-io/turndown) e [turndown-plugin-gfm](https://github.com/domchristie/turndown-plugin-gfm). Suporta export **completo**, opção **Remover conteúdo tachado** (aplicada antes da conversão) e **segmentos por cor** (`background-color` inline), com índice no rodapé do ficheiro principal quando exporta em lote.
+Extensão **Chrome** (Manifest V3) que exporta o conteúdo de artefatos de texto no **DOORS Next** (ALM) para **Markdown** (GFM), com [Turndown](https://github.com/mixmark-io/turndown) e [turndown-plugin-gfm](https://github.com/domchristie/turndown-plugin-gfm). Há opção **Remover conteúdo tachado** (aplicada antes da conversão) e, de forma opt-in, **tags de cor** no próprio ficheiro: comentários `<!-- alm-hl: #RRGGBB -->` … `<!-- /alm-hl -->` em volta dos realces cujo `background-color` inline o utilizador escolher.
 
 ## Requisitos
 
@@ -15,20 +15,18 @@ Extensão **Chrome** (Manifest V3) que exporta o conteúdo de artefatos de texto
 ## Uso
 
 1. Abrir um artefato cuja URL contenha `showArtifactPage` e `artifactURI`.
-2. **Remover conteúdo tachado** — se estiver marcado, o HTML passa por remoção de `del` / `s` / `strike` e de elementos com `text-decoration: line-through` antes do Turndown (export completo e segmentos).
-3. **Baixar Markdown do item** — só o documento completo.
-4. Análise automática de **cores de realce**; marcar uma ou mais cores, opcionalmente **um único ficheiro** (união) e **incluir Markdown completo** com índice; **Exportar selecionados**.
+2. **Remover conteúdo tachado** — se estiver marcado, o HTML passa por remoção de `del` / `s` / `strike` e de elementos com `text-decoration: line-through` antes do Turndown.
+3. **Análise de cores** — **Atualizar análise** (ou a análise ao abrir o popup) lista `background-color` fora de cinzas de UI. Opcional: **Incluir tags de cor no Markdown** e marcar quais **cores** recebem comentários `alm-hl` no texto exportado.
+4. **Baixar Markdown do item** — **um único** `.md` (diálogo *Guardar como*).
 
-**Nomes dos segmentos:** `basename__bg-RRGGBB.md`, `basename__destaques-selecionados.md` (união). Cada ficheiro por cor contém **apenas** os elementos HTML que têm esse `background-color` (não o parágrafo ou célula inteira, salvo se o próprio nó pintado for o parágrafo/célula). O índice usa caminhos `./…`; convém guardar todos na mesma pasta.
+Cada ficheiro contém o documento completo. Os comentários `alm-hl` envolvem só os nós HTML com a cor de fundo selecionada (não o parágrafo/célula inteira, salvo se o nó realçado for o próprio bloco), tal como a deteção de realce.
 
 ## Limitações
 
 - Só miolo de texto (widget `.rdm-text-artifact-widget` ou iframe CKEditor em uso).
 - Realce só é detetado com `style` inline (`background-color`); classes CSS puras não entram.
-- **GFM** não representa cor de fundo; nos segmentos a cor aparece sobretudo no **YAML** inicial.
-- **União** de várias cores: se um realce estiver dentro de outro de cor diferente, o texto pode aparecer mais do que uma vez no `.md` unido.
-- Documento completo: `saveAs: true`; segmentos: `saveAs: false` (pasta de downloads por defeito).
-- HTML muito específico do DOORS pode converter de forma imperfeita; itens grandes via data URL podem aproximar limites do browser.
+- **GFM** não representa cor de fundo; a cor fica explícita nos comentários `alm-hl` quando essa opção está activa.
+- HTML muito específico do DOORS pode converter de forma imperfeita; itens muito grandes via data URL podem aproximar limites do browser.
 
 ## Licença das dependências vendored
 
